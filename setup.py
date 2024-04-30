@@ -1,7 +1,7 @@
 import setuptools
 from almost_make.version import VERSION_STRING
 
-readmeFile = open("README.md", "r")
+readmeFile = open("README.md", "r", encoding='UTF-8')
 longDescription = readmeFile.read()
 readmeFile.close()
 

@@ -1,6 +1,9 @@
 #!/usr/bin/python
 
-import cmd, os, sys, getpass
+import cmd
+import os
+import sys
+import getpass
 import almost_make.utils.shellUtil.shellUtil as shell
 import almost_make.utils.shellUtil.runner as runner
 import almost_make.utils.macroUtil as macroUtility
@@ -19,15 +22,15 @@ class SimpleShell(cmd.Cmd):
     command = ''
     macroUtil = macroUtility.MacroUtil()
     promptEscapeSequences = escapeParser.DEFAULT_ESCAPE_SEQUENCES.copy()
-    
+
     def __init__(self, useBaseCommands=True, defaultFlags={}):
         self.macros = self.macroUtil.getDefaultMacros()
         self.defaultFlags = defaultFlags
         self.state = runner.ShellState()
-        
+
         if useBaseCommands:
         	self.macros["_CUSTOM_BASE_COMMANDS"] = True # Use custom base commands for testing.
-        
+
         self.macroUtil.setStopOnError(False)
 
         # Additional escape sequences to be (more) compatible
@@ -36,9 +39,9 @@ class SimpleShell(cmd.Cmd):
         self.promptEscapeSequences["["] = ""
         self.promptEscapeSequences["]"] = ""
         self.updatePrompt()
-        
+
         cmd.Cmd.__init__(self)
-    
+
     def updatePrompt(self):
         # Fill in prompt-related environment variables.
         self.promptEscapeSequences["w"] = self.state.cwd
@@ -48,7 +51,7 @@ class SimpleShell(cmd.Cmd):
             self.promptEscapeSequences["h"] = uname.nodename
         except:
             self.promptEscapeSequences["h"] = "unknown"
-        
+
         try:
             login = getpass.getuser()
             self.promptEscapeSequences["u"] = login
@@ -60,21 +63,21 @@ class SimpleShell(cmd.Cmd):
             self.prompt = escapeParser.parseEscapes(os.environ["PS1"], self.promptEscapeSequences)
         else:
             self.prompt = '$ '
-        
+
         if self.command != "":
             if "PS2" in os.environ:
-                self.prompt = escapeParser.parseEscapes(os.environ["PS2"], 
+                self.prompt = escapeParser.parseEscapes(os.environ["PS2"],
                         escapes=self.promptEscapeSequences)
             else:
                 self.prompt = ". "
-    
+
     def precmd(self, line):
         return line
-    
+
     def runCommand(self, command):
         try:
             result, self.macros = shell.evalScript(command, self.macroUtil, self.macros, self.defaultFlags, state=self.state)
-            
+
             if result != 0:
                 cprint("Warning:", FORMAT_COLORS["YELLOW"])
                 print(" Command exited with non-zero exit status, %s." % str(result))
@@ -87,20 +90,20 @@ class SimpleShell(cmd.Cmd):
     def default(self, line):
         if line == "EOF":
             sys.exit(0)
-    
+
         if line.strip().endswith('\\'):
             line = line.strip()
-            
+
             self.command += line[0:len(line) - 1]
             self.updatePrompt()
-            
+
             return
         else:
             self.command += line
-        
+
         self.runCommand(self.command)
         self.command = ""
-        
+
         self.updatePrompt()
 
 ARG_MAPPINGS = \
@@ -137,7 +140,7 @@ def printHelp():
 
 def main():
     args = parseArgs(sys.argv, ARG_MAPPINGS, strictlyFlags=JUST_FLAGS)
-    
+
     if 'help' in args:
         printHelp()
         sys.exit(1)
@@ -160,13 +163,13 @@ def main():
             scriptFile = open(script, 'r')
             lines = scriptFile.readlines()
             scriptFile.close()
-            
+
             for line in lines:
                 result = shell.runCommand(line)
 
                 if not result:
                     break
-            
+
         shell.cmdloop()
 
 if __name__ == "__main__":

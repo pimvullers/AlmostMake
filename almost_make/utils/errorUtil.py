@@ -9,11 +9,11 @@ class ErrorUtil:
     def reportError(self, message):
         if not self.silent or self.stopOnError:
             cprint(str(message) + "\n", "RED", file=sys.stderr)
-        
+
         if self.stopOnError:
             print ("Stopping.")
             sys.exit(1)
-    
+
     def logWarning(self, message):
         if not self.silent:
             cprint(str("Warning: ") + str(message) + "\n", "YELLOW", file=sys.stderr)
@@ -23,4 +23,4 @@ class ErrorUtil:
         self.stopOnError = stopOnErr
 
     def setSilent(self, silent):
-        self.silent = silent 
+        self.silent = silent

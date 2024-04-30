@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
-import sys, os
+import sys
+import os
 
 FORMAT_COLORS = \
 {
@@ -28,12 +29,12 @@ class _FDWrap:
         while part != '':
             result += part or ''
             part = os.read(self.fd, 1).decode('utf-8')
-        
+
         return result
     def flush(self):
         pass
 
-# If file is None, default to stdout. If a number, 
+# If file is None, default to stdout. If a number,
 # wrap it in a file-like object.
 def wrapFile(fileOrFd):
     if fileOrFd is None:

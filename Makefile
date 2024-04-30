@@ -1,6 +1,6 @@
 #!make
 
-all: 
+all:
 	@echo "Help:"
 	@echo -n "    \033[32minstall:\033[0m"
 	@echo " This one is important! It installs the current version of almost_make to permit testing. Don't use this unless you want to install a version of almake!"

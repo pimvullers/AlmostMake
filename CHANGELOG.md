@@ -1,3 +1,9 @@
+## 0.5.3
+ * Add if/filter/filter-out macro commands.
+ * Add info/warning/error macro commands.
+ * Add define support.
+ * Pylint fixes.
+
 ## 0.5.2
  * Flush `stdout` so that commands aren't out-of-order when there's no TTY (added by [PR #21](https://github.com/personalizedrefrigerator/AlmostMake/pull/21)).
 

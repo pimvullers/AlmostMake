@@ -2,7 +2,10 @@
 
 # See https://danishpraka.sh/2018/09/27/shell-in-python.html (Accessed Aug 22)
 
-import cmd, os, sys, shutil, pathlib, re
+import os
+import sys
+import pathlib
+import re
 
 from almost_make.utils.printUtil import cprint, FORMAT_COLORS
 import almost_make.utils.printUtil as printer
@@ -25,7 +28,7 @@ If [status] is not provided, exit with code zero.
 """,
 
     "ls": """Usage: ls [options] [directories]
-Print the contents of each directory in [directories] 
+Print the contents of each directory in [directories]
 or the current working directory.
 [options] can contain:
  -a, --all                   List all files, including '.' and '..'
@@ -89,6 +92,7 @@ Options:
 """
 }
 
+
 def filterArgs(args, minimumLength, stdout):
     if len(args) < minimumLength or "--help" in args:
         cprint(QUICK_HELP[args[0]] + '\n', file=stdout)
@@ -99,10 +103,12 @@ def filterArgs(args, minimumLength, stdout):
         return False
     return True
 
+
 CUSTOM_COMMANDS = \
 {
-    
+
 }
+
 
 def customExit(args, stdin, stdout, stderr, state):
     if len(args) == 1:
@@ -110,14 +116,16 @@ def customExit(args, stdin, stdout, stderr, state):
     else:
         return int(args[1])
 
+
 LS_DIRECTORY_COLOR = FORMAT_COLORS['BLUE']
 LS_LINK_COLOR = FORMAT_COLORS['BLUE']
 LS_FILE_COLOR = None
 
+
 def customLs(args, stdin, stdout, stderr, state):
-    dirs = [ os.path.abspath(state.cwd or '.') ]
-    
-    args = parseArgs(args, 
+    dirs = [os.path.abspath(state.cwd or '.')]
+
+    args = parseArgs(args,
     {
         'a': 'all',
         'f': 'unformatted',
@@ -135,23 +143,23 @@ def customLs(args, stdin, stdout, stderr, state):
     cwd = state.cwd or '.'
 
     if len(args['default']) > 0:
-        dirs = [ os.path.abspath(os.path.join(cwd, os.path.normcase(arg))) for arg in args['default'] ]
-    
-    def noteEntry(name, color, isLast = False):
-        decolorized = False # If we decolorize, do other formatting...
+        dirs = [os.path.abspath(os.path.join(cwd, os.path.normcase(arg))) for arg in args['default']]
+
+    def noteEntry(name, color, isLast=False):
+        decolorized = False  # If we decolorize, do other formatting...
 
         # If given a file descriptor (not default output),
         # we probably aren't sending output to a terminal. As such,
         # remove coloring. --color overrides this.
-        if stdout != None and not 'color' in args:
+        if stdout is not None and 'color' not in args:
             decolorized = True
             color = None
 
-        multiLine = decolorized and not 'comma-separated-list' in args or 'one-per-line' in args
+        multiLine = decolorized and 'comma-separated-list' not in args or 'one-per-line' in args
 
         sep = '  '
 
-        if (not 'all' in args and not 'unformatted' in args) and name.startswith('.'):
+        if ('all' not in args and 'unformatted' not in args) and name.startswith('.'):
             return
 
         if multiLine:
@@ -171,7 +179,7 @@ def customLs(args, stdin, stdout, stderr, state):
         else:
             cprint(name + sep, color, file=stdout)
 
-    if not 'unformatted' in args:
+    if 'unformatted' not in args:
         dirs.sort()
 
     isFirst = True
@@ -180,36 +188,38 @@ def customLs(args, stdin, stdout, stderr, state):
         if len(dirs) > 1:
             if not isFirst:
                 cprint("\n", file=stdout)
-            
+
             isFirst = False
             cprint("%s:\n" % directory, file=stdout)
-        
+
         fileList = []
 
         with os.scandir(directory) as files:
-            if not 'unformatted' in args:
+            if 'unformatted' not in args:
                 fileList = sorted(files, key=lambda entry: entry.name)
             else:
                 fileList = list(files)
 
         noteEntry('.', LS_DIRECTORY_COLOR)
-        noteEntry('..', LS_DIRECTORY_COLOR, isLast = (len(fileList) == 0))
+        noteEntry('..', LS_DIRECTORY_COLOR, isLast=(len(fileList) == 0))
 
         if len(fileList) != 0:
             for entry in fileList[:-1]:
                 noteEntry(entry.name, entry.is_dir() and LS_DIRECTORY_COLOR or LS_FILE_COLOR)
             noteEntry(fileList[-1].name, fileList[-1].is_dir() and LS_DIRECTORY_COLOR or LS_FILE_COLOR, isLast = True)
-        
+
         cprint("\n", file=stdout)
+
 
 def customPwd(args, stdin, stdout, stderr, state):
     cprint(os.path.abspath(state.cwd or '.') + '\n', file=stdout)
 
+
 def customTouch(args, stdin, stdout, stderr, state):
-    args = parseArgs(args, 
+    args = parseArgs(args,
     {
         'c': 'no-create'
-    }, 
+    },
     strictlyFlags=
     {
         'no-create'
@@ -221,11 +231,12 @@ def customTouch(args, stdin, stdout, stderr, state):
     for path in args['default']:
         path = cwd.joinpath(path)
 
-        if path.is_file() or not 'no-create' in args:
+        if path.is_file() or 'no-create' not in args:
             path.touch()
             touchedCount += 1
-    
+
     return touchedCount != 0
+
 
 def customCd(args, stdin, stdout, stderr, state):
     oldCwd = state.cwd
@@ -234,15 +245,16 @@ def customCd(args, stdin, stdout, stderr, state):
         state.cwd = os.path.abspath(os.path.expanduser(args[1]))
     else:
         state.cwd = os.path.abspath(os.path.expanduser(os.path.join(state.cwd, os.path.expanduser(args[1]))))
-    
+
     result = True
 
     if not os.path.exists(state.cwd):
         cprint("cd: " + str(state.cwd) + ": No such file or directory\n", file=stderr)
         state.cwd = oldCwd
         result = False
-    
+
     return result
+
 
 def customEcho(args, stdin, stdout, stderr, state):
     if len(args) == 1:
@@ -250,17 +262,17 @@ def customEcho(args, stdin, stdout, stderr, state):
         cprint('\n', file=stdout)
 
         return 0
-    
+
     doEscapes = False
     doNewlines = True
     firstArg = args[1].strip()
-    
+
     if firstArg.startswith("-") and len(firstArg) <= 3:
         doEscapes = 'e' in firstArg
-        doNewlines = not 'n' in firstArg
-        
+        doNewlines = 'n' not in firstArg
+
         args = args[2:]
-        
+
         if len(args) > 0 and args[0].startswith('-') and len(args[0]) <= 2:
             if 'e' in args[0]:
                 doEscapes = True
@@ -272,21 +284,21 @@ def customEcho(args, stdin, stdout, stderr, state):
                 args = args[1:]
     else:
         args = args[1:]
-    
-    
+
     if len(args) < 1:
         return 0
-    
+
     printEnd = '\n'
     toPrint = " ".join(args)
-    
+
     if not doNewlines:
         printEnd = ''
-    
+
     if doEscapes:
         toPrint = escapeParser.parseEscapes(toPrint)
-    
+
     cprint(toPrint + printEnd, file=stdout)
+
 
 def customCat(args, stdin, stdout, stderr, state):
     args = parseArgs(args,
@@ -307,16 +319,16 @@ def customCat(args, stdin, stdout, stderr, state):
     def logLine(line):
         if 'number' in args:
             cprint("%s\t" % str(lineNu), file=stdout)
-        
+
         if 'show-tabs' in args:
             line = re.sub(r'[\t]', '^T', line)
-        
+
         end = 'show-ends' in args and '$' or ''
         cprint(str(line) + end + "\n", file=stdout)
 
     stdin = printer.wrapFile(stdin)
     success = True
-    
+
     for arg in args['default']:
         if arg == '-':
             lines = stdin.read().split('\n')
@@ -349,7 +361,7 @@ def customCat(args, stdin, stdout, stderr, state):
 
                     for line in lines:
                         lineNu += 1
-                        if type(line) == bytes:
+                        if isinstance(line, bytes):
                             logLine(line.decode('utf-8', errors='replace'))
                         else:
                             logLine(line)
@@ -357,6 +369,7 @@ def customCat(args, stdin, stdout, stderr, state):
                 cprint("Unable to read file %s. Message: %s.\n" % (filename, ex), printer.FORMAT_COLORS['RED'], file=stderr)
                 success = False
     return success
+
 
 def customGrep(args, stdin, stdout, stderr, state):
     args = parseArgs(args,
@@ -380,7 +393,7 @@ def customGrep(args, stdin, stdout, stderr, state):
     if len(args['default']) > 1:
         cprint("[Files...] is currently unsupported. Input should be given via stdin.\n", printer.FORMAT_COLORS['RED'], file=stderr)
         return False
-    
+
     patterns = []
 
     if len(args['default']) > 0:
@@ -398,22 +411,22 @@ def customGrep(args, stdin, stdout, stderr, state):
     else:
         # If no default arguments, grep was probably called
         # with an empty pattern. Note this.
-        patterns.append(re.compile('')) 
-    
+        patterns.append(re.compile(''))
+
     def matchesLine(line):
         matches = []
         for pattern in patterns:
             matchInfo = None
 
-            if not 'line-regexp' in args:
+            if 'line-regexp' not in args:
                 matchInfo = pattern.search(line)
             else:
                 matchInfo = pattern.fullmatch(line)
 
-            if matchInfo != None:
+            if matchInfo is not None:
                 matches.append(matchInfo.span())
         return matches
-    
+
     stdin = printer.wrapFile(stdin)
     lines = stdin.read().split('\n')
 
@@ -429,24 +442,24 @@ def customGrep(args, stdin, stdout, stderr, state):
         matches = matchesLine(line)
 
         # Negates (len(matches) > 0) if 'invert-match' in args.
-        if (len(matches) > 0) == (not 'invert-match' in args):
-            matchCount += 1 # Count the number of **lines**
+        if (len(matches) > 0) == ('invert-match' not in args):
+            matchCount += 1  # Count the number of **lines**
 
-            if not 'count' in args and not 'quiet' in args:
+            if 'count' not in args and 'quiet' not in args:
                 if 'line-number' in args:
                     cprint(str(lineNumber) + '\t', file=stdout)
 
-                if not 'only-matching' in args or 'invert-match' in args:
-                    if stdout != None or 'no-color' in args: # Don't colorize output when output isn't the default...
+                if 'only-matching' not in args or 'invert-match' in args:
+                    if stdout is not None or 'no-color' in args:  # Don't colorize output when output isn't the default...
                         cprint(line + '\n', file=stdout)
-                    else: # Otherwise, colorize output.
+                    else:  # Otherwise, colorize output.
                         startIndexes = set()
                         stopIndexes = set()
 
-                        for start,stop in matches:
+                        for start, stop in matches:
                             startIndexes.add(start)
                             stopIndexes.add(stop)
-                        
+
                         buff = ''
                         inRange = False
 
@@ -461,17 +474,18 @@ def customGrep(args, stdin, stdout, stderr, state):
                                 buff += line[i]
                             else:
                                 cprint(line[i], file=stdout)
-                        
+
                         cprint(buff, printer.FORMAT_COLORS['PURPLE'], file=stdout)
                         cprint('\n', file=stdout)
                 else:
-                    for start,stop in matches:
+                    for start, stop in matches:
                         cprint(line[start:stop] + '\n', file=stdout)
-    
+
     if 'count' in args:
         cprint(str(matchCount) + '\n', file=stdout)
-    
+
     return matchCount > 0
+
 
 def customRm(args, stdin, stdout, stderr, state):
     args = parseArgs(args,
@@ -480,7 +494,7 @@ def customRm(args, stdin, stdout, stderr, state):
         'R': 'recursive',
         'f': 'force',
         'd': 'dir'
-    }, 
+    },
     strictlyFlags=
     {
         'recursive',
@@ -488,41 +502,42 @@ def customRm(args, stdin, stdout, stderr, state):
         'dir'
     })
 
-    toRemove = [ os.path.join(state.cwd or '.', arg) for arg in args['default'] ]
+    toRemove = [os.path.join(state.cwd or '.', arg) for arg in args['default']]
     success = True
 
     while len(toRemove) > 0:
         filepath = os.path.abspath(os.path.normcase(os.path.normpath(toRemove.pop())))
 
         if os.path.isdir(filepath):
-            if not 'dir' in args and not 'recursive' in args:
+            if 'dir' not in args and 'recursive' not in args:
                 cprint("Refusing to remove %s because it is a directory.\n" % filepath, FORMAT_COLORS['RED'], stderr)
                 success = False
                 continue
-            
+
             filesInDir = os.listdir(filepath)
 
             if len(filesInDir) == 0:
                 os.rmdir(filepath)
                 continue
 
-            if not 'recursive' in args:
+            if 'recursive' not in args:
                 cprint("Refusing to remove non-empty directory %s.\n" % filepath, FORMAT_COLORS['RED'], stderr)
                 success = False
                 continue
 
             # We need to re-consider filepath after removing its contents.
             toRemove.append(filepath)
-            toRemove.extend([ os.path.join(filepath, filename) for filename in filesInDir ])
+            toRemove.extend([os.path.join(filepath, filename) for filename in filesInDir])
         elif os.path.isfile(filepath):
             os.remove(filepath)
-        elif not os.path.exists(filepath) and not 'force' in args:
+        elif not os.path.exists(filepath) and 'force' not in args:
             cprint("%s does not exist.\n" % filepath, FORMAT_COLORS['RED'], stderr)
             success = False
-        elif not 'force' in args:
+        elif 'force' not in args:
             cprint('Refusing to remove entity of unknown type: %s.\n' % filepath, FORMAT_COLORS['RED'], stderr)
             success = False
     return success
+
 
 def customMkdir(args, stdin, stdout, stderr, state):
     args = parseArgs(args,
@@ -552,7 +567,7 @@ def customMkdir(args, stdin, stdout, stderr, state):
 
         if 'verbose' in args:
             cprint('Creating %s...\n' % filepath, file=stdout)
-        
+
         try:
             if 'parents' in args:
                 os.makedirs(filepath, mode)
@@ -564,28 +579,30 @@ def customMkdir(args, stdin, stdout, stderr, state):
                     continue
 
                 os.mkdir(filepath, mode)
-        except FileExistsError as ex:
-            if not 'parents' in args:
+        except FileExistsError:
+            if 'parents' not in args:
                 cprint("Unable to create directory %s. File exists.\n" % filepath, FORMAT_COLORS['RED'], stderr)
                 success = False
             else:
                 continue
-    
+
     return success
-        
+
+
 def customChmod(args, stdin, stdout, stderr, state):
     pass
+
 
 # Get a set of custom commands that can be used.
 def getCustomCommands(macros):
     result = {}
-    
+
     for key in CUSTOM_COMMANDS:
         result[key] = CUSTOM_COMMANDS[key]
 
     def addCustomCommand(alias, minArgs, fn):
         result[alias] = lambda args, flags, stdin, stdout, stderr, state: filterArgs(args, minArgs, stdout) and fn(args, stdin, stdout, stderr, state)
-    
+
     addCustomCommand("cd", 2, customCd)
     addCustomCommand("exit", 1, customExit)
 
@@ -599,18 +616,20 @@ def getCustomCommands(macros):
         addCustomCommand("grep", 2, customGrep)
         addCustomCommand("rm", 2, customRm)
         addCustomCommand("mkdir", 2, customMkdir)
-    
+
     return result
 
-def evalScript(text, macroUtil, macros={}, defaultFlags = [], state=None):
+
+def evalScript(text, macroUtil, macros={}, defaultFlags=[], state=None):
     if not state:
         state = runner.ShellState()
-    
+
     # Set appropriate macros.
     macros["PWD"] = state.cwd
 
     text, macros = macroUtil.expandAndDefineMacros(text, macros)
     return (runner.runCommand(text, getCustomCommands(macros), defaultFlags, state), macros)
+
 
 if __name__ == "__main__":
     import almost_make.utils.macroUtil as macroUtility
@@ -619,7 +638,7 @@ if __name__ == "__main__":
     def assertEql(a, b, message):
         if a != b:
             raise Exception("%s != %s (%s)" % (str(a), str(b), message))
-    
+
     def assertNotEql(a, b, message):
         if a == b:
             raise Exception("%s == %s (%s)" % (str(a), str(b), message))

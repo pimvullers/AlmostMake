@@ -1,3 +1,4 @@
 #!/usr/bin/python3
 
-__all__ = [ "escapeParser", "runner", "shellUtil", "interactiveShell", "globber" ]
+__all__ = ["escapeParser", "runner", "shellUtil", "interactiveShell",
+           "globber"]

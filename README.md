@@ -16,7 +16,7 @@ CC = clang
 CFLAGS =
 TEST_MACRO = Testing1234=:= := This **should ** work! # A comment!
 
-EXEC_PROGRAM         = 
+EXEC_PROGRAM         =
 SEND_MACROS         := EXEC_PROGRAM=$(EXEC_PROGRAM) CC=$(CC) CFLAGS=$(CFLAGS) TEST_MACRO="$(TEST_MACRO)" # Note: '=' defers expansion. ':=' does not.
 export MAKEFLAGS    := $(MAKEFLAGS) $(SEND_MACROS)
 ```
@@ -80,7 +80,7 @@ firstTarget:
     echo 'Hello, world'
 
 # firstTarget isn't the name of a real file!
-# Mark it as PHONY. We need this because if 
+# Mark it as PHONY. We need this because if
 # firstTarget were to be a file in the same
 # folder as Makefile, its existence (and lack
 # of newer dependencies) would cause `almake`
@@ -93,7 +93,7 @@ firstTarget:
 Additional options are documented through `almake`'s helptext:
 ```sh
 $ almake --help
-Help: 
+Help:
  Summary: Satisfy dependencies of a target in a makefile. This parser is not quite POSIX-compliant, but should be able to parse simple makefiles.
  Usage: almake [targets...] [options]
   where each target in targets is a valid target and options include:
@@ -103,14 +103,14 @@ Help:
     -k                           Keep going if errors are encountered.
     -n, --just-print             Just print commands to be run, without evaluating (print commands, don't send them to the shell). Be aware that $(shell ...) macros are still evaluated. This option only applies to individual commands.
     -p                           Rather than finding targets, print the makefile, with top-level targets expanded.
-    -C dir                       Switch to directory, dir, before running make. 
-    -w, --print-directory        Print the current directory before and after running make. 
-    -j, --jobs                   Maximum number of jobs (e.g. almake -j 8). 
+    -C dir                       Switch to directory, dir, before running make.
+    -w, --print-directory        Print the current directory before and after running make.
+    -j, --jobs                   Maximum number of jobs (e.g. almake -j 8).
     -s, --silent                 In most cases, don't print output.
     -b, --built-in-shell         Use the built-in shell for commands in the makefile. This can also be enabled as follows:
    export _BUILTIN_SHELL := 1           # Use the built-in shell instead of the system shell.
    export _CUSTOM_BASE_COMMANDS := 1    # Enable built-in overrides for several commands like ls, echo, cat, grep, and pwd.
-   export _SYSTEM_SHELL_PIPES := 1      # Send commands that seem related to pipes (e.g. ls | less) directly to the system's shell. 
+   export _SYSTEM_SHELL_PIPES := 1      # Send commands that seem related to pipes (e.g. ls | less) directly to the system's shell.
 Note: AlmostMake's built-in shell is currently very limited.
 
 Note: Macro definitions that override those from the environment can be provided in addition to targets and options. For example,
@@ -121,12 +121,12 @@ Note: Options can also be given to almake through the environment. This is done 
 
 ### `almake_shell`
 
-In addition to the `almake` command, the `almake_shell` command is available. This command gives access to an interactive version of the (very limited) shell built into AlmostMake. 
+In addition to the `almake` command, the `almake_shell` command is available. This command gives access to an interactive version of the (very limited) shell built into AlmostMake.
 
 Like `almake`, we get usage information as follows:
 ```sh
 $ almake_shell --help
-Help: 
+Help:
  Summary: Run an interactive version of the shell built into almake. This is a POSIX-like shell. It is not POSIX-compliant.
  Usage: almake_shell [options] [files...]
   ...where each filename in [files...] is an optional file to interpret. If files are given, interpret them before opening the shell.
@@ -139,7 +139,7 @@ Options include:
 
 ### The `almost_make` Python module
 
-AlmostMake also makes available the `almost_make` module! Documentation on this is coming, but for now, check out the source on [GitHub](https://github.com/personalizedrefrigerator/AlmostMake)! 
+AlmostMake also makes available the `almost_make` module! Documentation on this is coming, but for now, check out the source on [GitHub](https://github.com/personalizedrefrigerator/AlmostMake)!
 
 ## Installation
 
