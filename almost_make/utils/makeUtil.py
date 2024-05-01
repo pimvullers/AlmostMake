@@ -99,8 +99,7 @@ class MakeUtil:
             self.makeCmdAddFix(argstring, macros, cmd="addsuffix")
         self.macroCommands["addprefix"] = lambda argstring, macros: \
             self.makeCmdAddFix(argstring, macros, cmd="addprefix")
-        self.macroCommands["join"] = lambda argstring, macros: \
-            self.makeCmdJoin(argstring, macros)
+        self.macroCommands["join"] = self.makeCmdJoin
         self.macroCommands["wildcard"] = lambda argstring, macros: \
             " ".join([shlex.quote(part) for part in self.glob(
                 self.macroUtil.expandMacroUsages(argstring, macros), macros)])
@@ -113,10 +112,9 @@ class MakeUtil:
 
         # Functions for Conditionals
         self.macroCommands["if"] = self.makeCmdIf
-        self.macroCommands["or"] = lambda argstring, macros: \
-            self.makeCmdNotImplementedYet(argstring, macros, cmd="or")
+        self.macroCommands["or"] = self.makeCmdLogical
         self.macroCommands["and"] = lambda argstring, macros: \
-            self.makeCmdNotImplementedYet(argstring, macros, cmd="and")
+            self.makeCmdLogical(argstring, macros, returnOnEmpty=True)
         self.macroCommands["intcmp"] = lambda argstring, macros: \
             self.makeCmdNotImplementedYet(argstring, macros, cmd="intcmp")
 
@@ -803,6 +801,7 @@ class MakeUtil:
     # See https://www.gnu.org/software/make/manual/html_node/Syntax-of-Functions.html#Syntax-of-Functions
     #     and https://www.gnu.org/software/make/manual/html_node/Conditional-Functions.html
     def makeCmdIf(self, argstring, macros):
+        # TODO: split first, then expand
         args = self.macroUtil.expandMacroUsages(argstring, macros).split(',')
 
         if not (len(args) == 2 or len(args) == 3):
@@ -813,6 +812,22 @@ class MakeUtil:
             return args[1]
         else:
             return "" if len(args) == 2 else args[2]
+
+    def makeCmdLogical(self, argstring, macros, returnOnEmpty=False):
+        # TODO: split first, then expand
+        conditions = self.macroUtil.expandMacroUsages(argstring, macros).split(',')
+
+        result = ""
+        for condition in conditions:
+            if condition == "":
+                if returnOnEmpty:
+                    return ""
+            else:
+                if not returnOnEmpty:
+                    return condition
+            result = condition
+
+        return result
 
     # Format:
     #  - $(filter pattern...,text)
