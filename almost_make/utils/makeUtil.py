@@ -7,9 +7,12 @@
 
 # Parses very simple Makefiles.
 # Useful Resources:
-#  - Chris Wellons' "A Tutorial on Portable Makefiles". https://nullprogram.com/blog/2017/08/20/ Accessed August 22, 2020
-#  - GNUMake: https://www.gnu.org/software/make/manual/make.html Accessed August 22, 2020
-#  - BSDMake:  http://khmere.com/freebsd_book/html/ch01.html Accessed Aug 22 2020
+#  - Chris Wellons' "A Tutorial on Portable Makefiles"
+#    https://nullprogram.com/blog/2017/08/20/ Accessed August 22, 2020
+#  - GNUMake:
+#    https://www.gnu.org/software/make/manual/make.html Accessed August 22, 2020
+#  - BSDMake:
+#    http://khmere.com/freebsd_book/html/ch01.html Accessed August 22, 2020
 
 import re
 import sys
@@ -30,7 +33,8 @@ import almost_make.utils.errorUtil as errorUtility
 
 # Regular expressions
 SPACE_CHARS = re.compile(r'\s+')
-INCLUDE_DIRECTIVE_EXP = re.compile(r"^\s*(include|\.include|-include|sinclude)\s+")
+INCLUDE_DIRECTIVE_EXP = re.compile(
+    r"^\s*(include|\.include|-include|sinclude)\s+")
 
 # Targets that are used by this parser/should be ignored.
 MAGIC_TARGETS = {
@@ -59,7 +63,7 @@ class MakeUtil:
         self.macroCommands["strip"] = lambda argstring, macros: \
             argstring.strip()
         self.macroCommands["findstring"] = lambda argstring, macros: \
-            self.makeCmdNotImplementedYet(argstring, macros, cmd="findstring")
+            self.makeCmdFilter(argstring, macros, find=True)
         self.macroCommands["filter"] = self.makeCmdFilter
         self.macroCommands["filter-out"] = lambda argstring, macros: \
             self.makeCmdFilter(argstring, macros, exclude=True)
@@ -67,8 +71,7 @@ class MakeUtil:
             " ".join(sorted(list(set(SPACE_CHARS.split(
                 self.macroUtil.expandMacroUsages(argstring, macros))))))
         self.macroCommands["word"] = self.getWordOf
-        self.macroCommands["wordlist"] = lambda argstring, macros: \
-            self.makeCmdNotImplementedYet(argstring, macros, cmd="wordlist")
+        self.macroCommands["wordlist"] = self.makeCmdWordList
         self.macroCommands["words"] = lambda argstring, macros: \
             str(len(SPACE_CHARS.split(
                 self.macroUtil.expandMacroUsages(argstring, macros))))
@@ -757,6 +760,39 @@ class MakeUtil:
         except IndexError:
             return ""
 
+    def makeCmdWordList(self, argstring, macros):
+        args = argstring.split(',')
+
+        if len(args) <= 2:
+            self.errorUtil.reportError(
+                f"Not enough arguments to wordlist macro. Context: {argstring}"
+            )
+            return ""
+
+        selectStartText = self.macroUtil.expandMacroUsages(args[0], macros)
+        selectStopText = self.macroUtil.expandMacroUsages(args[1], macros)
+
+        try:
+            # From argstring (one-indexed) => string indices (zero-indexed).
+            selectStart = int(selectStartText) - 1
+            selectStop = int(selectStopText) - 1
+            argText = ','.join(args[2:]).strip()
+        except ValueError:
+            self.errorUtil.reportError(
+                "First arguments to wordlist macros must be an integer."
+                f"Context: {argstring}"
+            )
+            return ""
+
+        argText = self.macroUtil.expandMacroUsages(argText, macros)
+        words = SPACE_CHARS.split(argText)
+
+        if selectStart > len(words):
+            return ""
+
+        selectStop = min(selectStop, len(words))
+        return " ".join(words[selectStart:selectStop+1])
+
     # Format: $(if condition,then-part[,else-part])
     # Example: $(if ,a,b) -> b
     # Example: $(if c,a,b) -> a
@@ -774,12 +810,17 @@ class MakeUtil:
         else:
             return "" if len(args) == 2 else args[2]
 
-    # Format: $(filter pattern...,text) $(filter-out pattern...,text)
+    # Format:
+    #  - $(filter pattern...,text)
+    #  - $(filter-out pattern...,text)
+    #  - $(findstring pattern, text)
     # Example: $(filter a b,a b c) -> a b
     # Example: $(filter-out a b,a b c) -> c
+    # Example: $(findstring a,a b c) -> a
+    # Example: $(findstring a,b c) -> ""
     # See https://www.gnu.org/software/make/manual/html_node/Syntax-of-Functions.html#Syntax-of-Functions
     #     and https://www.gnu.org/software/make/manual/html_node/Text-Functions.html
-    def makeCmdFilter(self, argstring, macros, exclude=False):
+    def makeCmdFilter(self, argstring, macros, exclude=False, find=False):
         args = argstring.split(',')
 
         if not len(args) == 2:
@@ -788,8 +829,8 @@ class MakeUtil:
         if '%' in args[0]:
             self.errorUtil.reportError("Patterns are not yet supported for filter function. Filters: %s" % args[0])
 
-        patterns = args[0].split()
-        text = args[1].split()
+        patterns = SPACE_CHARS.split(args[0])
+        text = SPACE_CHARS.split(args[1])
 
         match = []
         mismatch = []
@@ -798,7 +839,11 @@ class MakeUtil:
                 match.append(word)
             else:
                 mismatch.append(word)
-        return " ".join(mismatch if exclude else match)
+
+        if find:
+            return args[0] if len(match) > 0 else ""
+        else:
+            return " ".join(mismatch if exclude else match)
 
     def makeCmdNotImplementedYet(self, argstring, macros, cmd):
         raise NotImplementedError(f"$({cmd} ...) not yet implemented")
@@ -812,7 +857,7 @@ class MakeUtil:
             suffix = ""
             prefix = args[0]
         result = []
-        for entry in args[1].split():
+        for entry in SPACE_CHARS.split(args[1]):
             result.append(f"{prefix}{entry}{suffix}")
 
         return " ".join(result)
