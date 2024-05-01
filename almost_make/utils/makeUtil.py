@@ -100,7 +100,7 @@ class MakeUtil:
         self.macroCommands["addprefix"] = lambda argstring, macros: \
             self.makeCmdAddFix(argstring, macros, cmd="addprefix")
         self.macroCommands["join"] = lambda argstring, macros: \
-            self.makeCmdNotImplementedYet(argstring, macros, cmd="join")
+            self.makeCmdJoin(argstring, macros)
         self.macroCommands["wildcard"] = lambda argstring, macros: \
             " ".join([shlex.quote(part) for part in self.glob(
                 self.macroUtil.expandMacroUsages(argstring, macros), macros)])
@@ -851,6 +851,22 @@ class MakeUtil:
 
     def makeCmdNotImplementedYet(self, argstring, macros, cmd):
         raise NotImplementedError(f"$({cmd} ...) not yet implemented")
+
+    def makeCmdJoin(self, argstring, macros):
+        args = argstring.split(',', 1)
+        a = SPACE_CHARS.split(args[0])
+        b = SPACE_CHARS.split(args[1])
+
+        result = []
+        for index in range(0, min(len(a), len(b))):
+            result.append(f"{a[index]}{b[index]}")
+
+        if len(a) > len(b):
+            result += a[len(b):]
+        else:
+            result += b[len(a):]
+
+        return " ".join(result)
 
     def makeCmdAddFix(self, argstring, macros, cmd):
         args = argstring.split(',', 1)
