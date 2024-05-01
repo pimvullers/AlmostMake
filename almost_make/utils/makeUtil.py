@@ -59,7 +59,7 @@ class MakeUtil:
         # Functions for String Substitution and Analysis
         self.macroCommands["subst"] = self.makeCmdSubst
         self.macroCommands["patsubst"] = lambda argstring, macros: \
-            self.makeCmdSubst(argstring, macros, True)
+            self.makeCmdSubst(argstring, macros, patternBased=True)
         self.macroCommands["strip"] = lambda argstring, macros: \
             argstring.strip()
         self.macroCommands["findstring"] = lambda argstring, macros: \
@@ -88,9 +88,13 @@ class MakeUtil:
             " ".join([os.path.basename(arg) for arg in SPACE_CHARS.split(
                 self.macroUtil.expandMacroUsages(argstring, macros))])
         self.macroCommands["suffix"] = lambda argstring, macros: \
-            self.makeCmdNotImplementedYet(argstring, macros, cmd="suffix")
+            " ".join([suffix.strip() for suffix in re.findall(
+                r"\.[^.\s]\s",
+                self.macroUtil.expandMacroUsages(argstring, macros))])
         self.macroCommands["basename"] = lambda argstring, macros: \
-            self.makeCmdNotImplementedYet(argstring, macros, cmd="basename")
+            " ".join([basename.strip() for basename in re.split(
+                r"\.[^.\s]\s",
+                self.macroUtil.expandMacroUsages(argstring, macros))])
         self.macroCommands["addsuffix"] = lambda argstring, macros: \
             self.makeCmdAddFix(argstring, macros, cmd="addsuffix")
         self.macroCommands["addprefix"] = lambda argstring, macros: \
