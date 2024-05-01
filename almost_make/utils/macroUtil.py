@@ -17,7 +17,7 @@ MACRO_NAME_CHAR_RE = re.compile(MACRO_NAME_CHAR_EXP)
 MACRO_SET_EXP = r"\s*([:+?]?)=\s*"
 MACRO_SET_RE = re.compile(MACRO_SET_EXP)
 IS_MACRO_DEF_RE = re.compile(f"^{MACRO_NAME_CHAR_EXP}+{MACRO_SET_EXP}.*")
-IS_MACRO_INVOKE_RE = re.compile(f".*(?:[$])[({{]?{MACRO_NAME_CHAR_EXP}+[)}}]?")
+IS_MACRO_INVOKE_RE = re.compile(f".*[$][({{]?{MACRO_NAME_CHAR_EXP}+[)}}]?")
 SPACE_CHARS = re.compile(r"\s")
 
 CONDITIONAL_START = re.compile(r"^\s*(ifeq|ifneq|ifdef|ifndef)(?:\s|$)")
@@ -92,7 +92,8 @@ class MacroUtil:
         return self.isMacroDef(text[len("export "):].strip())
 
     # Get if [text] syntactically invokes a macro.
-    def isMacroInvoke(self, text):
+    @staticmethod
+    def isMacroInvoke(text):
         return IS_MACRO_INVOKE_RE.match(text) is not None
 
     # Get if [text] is a conditional statement.
@@ -192,7 +193,8 @@ From %s, parsed arguments: %s""" % (
         return elseBranch or ''  # elseBranch can be None...
 
     # Get a list of suggested default macros from the environment
-    def getDefaultMacros(self):
+    @staticmethod
+    def getDefaultMacros():
         result = {}
 
         for name in os.environ:
@@ -202,7 +204,8 @@ From %s, parsed arguments: %s""" % (
 
     # Split content by lines, but paying attention to escaped newline
     # characters.
-    def getLines(self, content):
+    @staticmethod
+    def getLines(content):
         result = []
         escapeCharLast = False
         buff = ''
@@ -403,8 +406,7 @@ From %s, parsed arguments: %s""" % (
                         # The endif applied to a sub-if statement.
                         if len(conditionalData['stack']) > 1:
                             conditionalData['stack'].pop()
-                            # print("   To if. stacklen: "
-                            # + str(len(conditionalData['stack'])))
+                            # print("   To if. stack len: " + str(len(conditionalData['stack'])))
                         else:
                             # print("  To else")
 
@@ -448,7 +450,7 @@ From %s, parsed arguments: %s""" % (
 
             # If either a macro export, or a setting a macro's value, without
             # an export...
-            if (self.isMacroDef(line) or exporting):
+            if self.isMacroDef(line) or exporting:
                 if exporting:
                     line = line[len("export "):]
 
@@ -520,4 +522,4 @@ From %s, parsed arguments: %s""" % (
                 "Un-ending conditional (check your indentation -- leading tabs"
                 f"can mess things up)! Conditional data: {conditionalData}.")
 
-        return (result, macros)
+        return result, macros

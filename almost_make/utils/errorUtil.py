@@ -1,22 +1,30 @@
 #!/usr/bin/python3
 
-from almost_make.utils.printUtil import *
+# pylint: disable=missing-module-docstring
+# pylint: disable=missing-class-docstring
+# pylint: disable=missing-function-docstring
+# pylint: disable=invalid-name
+
+import sys
+from almost_make.utils.printUtil import cprint
+
 
 class ErrorUtil:
     stopOnError = True
     silent = False
+
     # On error, report [message] depending on [SILENT] and [STOP_ON_ERROR]
     def reportError(self, message):
         if not self.silent or self.stopOnError:
-            cprint(str(message) + "\n", "RED", file=sys.stderr)
+            cprint(f"{message}\n", "RED", file=sys.stderr)
 
         if self.stopOnError:
-            print ("Stopping.")
+            print("Stopping.")
             sys.exit(1)
 
     def logWarning(self, message):
         if not self.silent:
-            cprint(str("Warning: ") + str(message) + "\n", "YELLOW", file=sys.stderr)
+            cprint(f"Warning: {message}\n", "YELLOW", file=sys.stderr)
 
     # Option-setting functions
     def setStopOnError(self, stopOnErr):

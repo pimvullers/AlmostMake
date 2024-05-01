@@ -52,53 +52,98 @@ class MakeUtil:
     justPrint = False  # Print commands, without evaluating.
 
     def __init__(self):
-        self.macroCommands["words"] = lambda argstring, macros: \
-            str(len(SPACE_CHARS.split(
-                self.macroUtil.expandMacroUsages(argstring, macros))))
+        # Functions for String Substitution and Analysis
+        self.macroCommands["subst"] = self.makeCmdSubst
+        self.macroCommands["patsubst"] = lambda argstring, macros: \
+            self.makeCmdSubst(argstring, macros, True)
+        self.macroCommands["strip"] = lambda argstring, macros: \
+            argstring.strip()
+        self.macroCommands["findstring"] = lambda argstring, macros: \
+            self.makeCmdNotImplementedYet(argstring, macros, cmd="findstring")
+        self.macroCommands["filter"] = self.makeCmdFilter
+        self.macroCommands["filter-out"] = lambda argstring, macros: \
+            self.makeCmdFilter(argstring, macros, exclude=True)
         self.macroCommands["sort"] = lambda argstring, macros: \
             " ".join(sorted(list(set(SPACE_CHARS.split(
                 self.macroUtil.expandMacroUsages(argstring, macros))))))
-        self.macroCommands["strip"] = lambda argstring, macros: \
-            argstring.strip()
+        self.macroCommands["word"] = self.getWordOf
+        self.macroCommands["wordlist"] = lambda argstring, macros: \
+            self.makeCmdNotImplementedYet(argstring, macros, cmd="wordlist")
+        self.macroCommands["words"] = lambda argstring, macros: \
+            str(len(SPACE_CHARS.split(
+                self.macroUtil.expandMacroUsages(argstring, macros))))
+        self.macroCommands["firstword"] = lambda argstring, macros: \
+            self.getWordOf(argstring, macros, selectWord=0)
+        self.macroCommands["lastword"] = lambda argstring, macros: \
+            self.getWordOf(argstring, macros, selectWord=-1)
 
-        # To-do: Use the built-in shell if specified...
-        self.macroCommands["shell"] = lambda code, macros: \
-            os.popen(self.macroUtil.expandMacroUsages(code, macros)).read() \
-            .rstrip(' \n\r\t')
-        self.macroCommands["wildcard"] = lambda argstring, macros: \
-            " ".join([shlex.quote(part) for part in self.glob(
-                self.macroUtil.expandMacroUsages(argstring, macros), macros)])
+        # Functions for File Names
         self.macroCommands["dir"] = lambda argstring, macros: \
             " ".join([os.path.dirname(arg) for arg in SPACE_CHARS.split(
                 self.macroUtil.expandMacroUsages(argstring, macros))])
         self.macroCommands["notdir"] = lambda argstring, macros: \
             " ".join([os.path.basename(arg) for arg in SPACE_CHARS.split(
                 self.macroUtil.expandMacroUsages(argstring, macros))])
-        self.macroCommands["abspath"] = lambda argstring, macros: \
-            " ".join([os.path.abspath(arg) for arg in SPACE_CHARS.split(
-                self.macroUtil.expandMacroUsages(argstring, macros))])
+        self.macroCommands["suffix"] = lambda argstring, macros: \
+            self.makeCmdNotImplementedYet(argstring, macros, cmd="suffix")
+        self.macroCommands["basename"] = lambda argstring, macros: \
+            self.makeCmdNotImplementedYet(argstring, macros, cmd="basename")
+        self.macroCommands["addsuffix"] = lambda argstring, macros: \
+            self.makeCmdAddFix(argstring, macros, cmd="addsuffix")
+        self.macroCommands["addprefix"] = lambda argstring, macros: \
+            self.makeCmdAddFix(argstring, macros, cmd="addprefix")
+        self.macroCommands["join"] = lambda argstring, macros: \
+            self.makeCmdNotImplementedYet(argstring, macros, cmd="join")
+        self.macroCommands["wildcard"] = lambda argstring, macros: \
+            " ".join([shlex.quote(part) for part in self.glob(
+                self.macroUtil.expandMacroUsages(argstring, macros), macros)])
         self.macroCommands["realpath"] = lambda argstring, macros: \
             " ".join([os.path.realpath(arg) for arg in SPACE_CHARS.split(
                 self.macroUtil.expandMacroUsages(argstring, macros))])
+        self.macroCommands["abspath"] = lambda argstring, macros: \
+            " ".join([os.path.abspath(arg) for arg in SPACE_CHARS.split(
+                self.macroUtil.expandMacroUsages(argstring, macros))])
 
-        self.macroCommands["subst"] = self.makeCmdSubst
-        self.macroCommands["patsubst"] = lambda argstring, macros: \
-            self.makeCmdSubst(argstring, macros, True)
-        self.macroCommands["firstword"] = lambda argstring, macros: \
-            self.getWordOf(argstring, macros, selectWord=0)
-        self.macroCommands["lastword"] = lambda argstring, macros: \
-            self.getWordOf(argstring, macros, selectWord=-1)
-        self.macroCommands["word"] = self.getWordOf
+        # Functions for Conditionals
         self.macroCommands["if"] = self.makeCmdIf
-        self.macroCommands["filter"] = self.makeCmdFilter
-        self.macroCommands["filter-out"] = lambda argstring, macros: \
-            self.makeCmdFilter(argstring, macros, exclude=True)
-        self.macroCommands["info"] = lambda argstring, macros: \
-            self.makeCmdPrint(argstring, macros, cmd="info")
-        self.macroCommands["warning"] = lambda argstring, macros: \
-            self.makeCmdPrint(argstring, macros, cmd="warning")
+        self.macroCommands["or"] = lambda argstring, macros: \
+            self.makeCmdNotImplementedYet(argstring, macros, cmd="or")
+        self.macroCommands["and"] = lambda argstring, macros: \
+            self.makeCmdNotImplementedYet(argstring, macros, cmd="and")
+        self.macroCommands["intcmp"] = lambda argstring, macros: \
+            self.makeCmdNotImplementedYet(argstring, macros, cmd="intcmp")
+
+        # Functions that Control Make
         self.macroCommands["error"] = lambda argstring, macros: \
             self.makeCmdPrint(argstring, macros, cmd="error")
+        self.macroCommands["warning"] = lambda argstring, macros: \
+            self.makeCmdPrint(argstring, macros, cmd="warning")
+        self.macroCommands["info"] = lambda argstring, macros: \
+            self.makeCmdPrint(argstring, macros, cmd="info")
+
+        # Other functions
+        self.macroCommands["let"] = lambda argstring, macros: \
+            self.makeCmdNotImplementedYet(argstring, macros, cmd="let")
+        self.macroCommands["foreach"] = lambda argstring, macros: \
+            self.makeCmdNotImplementedYet(argstring, macros, cmd="foreach")
+        self.macroCommands["file"] = lambda argstring, macros: \
+            self.makeCmdNotImplementedYet(argstring, macros, cmd="file")
+        self.macroCommands["call"] = lambda argstring, macros: \
+            self.makeCmdNotImplementedYet(argstring, macros, cmd="call")
+        self.macroCommands["value"] = lambda argstring, macros: \
+            self.makeCmdNotImplementedYet(argstring, macros, cmd="value")
+        self.macroCommands["eval"] = lambda argstring, macros: \
+            self.makeCmdNotImplementedYet(argstring, macros, cmd="eval")
+        self.macroCommands["origin"] = lambda argstring, macros: \
+            self.makeCmdNotImplementedYet(argstring, macros, cmd="origin")
+        self.macroCommands["flavor"] = lambda argstring, macros: \
+            self.makeCmdNotImplementedYet(argstring, macros, cmd="flavor")
+        # To-do: Use the built-in shell if specified...
+        self.macroCommands["shell"] = lambda code, macros: \
+            os.popen(self.macroUtil.expandMacroUsages(code, macros)).read() \
+            .rstrip(' \n\r\t')
+        self.macroCommands["guile"] = lambda argstring, macros: \
+            self.makeCmdNotImplementedYet(argstring, macros, cmd="guile")
 
         self.errorUtil = errorUtility.ErrorUtil()
         self.macroUtil = macroUtility.MacroUtil()
@@ -175,7 +220,7 @@ class MakeUtil:
                 allGenerates = runner.removeEmpty(allGenerates)
 
                 # Get the dependencies (everything after the colon).
-                preReqs = line[sepIndex + 1 :].strip()
+                preReqs = line[sepIndex + 1:].strip()
                 dependsOn = runner.shSplit(preReqs, {' ', '\t', '\n', ';'})
                 dependsOn = runner.removeEqual(dependsOn, ';')
                 dependsOn = runner.removeEmpty(dependsOn)
@@ -208,9 +253,10 @@ class MakeUtil:
         # the end...
         targetNames.reverse()
         targetNames.extend(specialTargetNames)
-        return (result, targetNames)
+        return result, targetNames
 
-    def isPatternSubstRecipe(self, line):
+    @staticmethod
+    def isPatternSubstRecipe(line):
         if '%' not in line:
             return False
         parts = escaper.escapeSafeSplit(line, '%', '\\')
@@ -220,7 +266,8 @@ class MakeUtil:
     # Get a list of directories (including the current working directory)
     # from macros['VPATH']. Returns an array with one element, the current
     # working directory, if there is no 'VPATH' macro.
-    def getSearchPath(self, macros):
+    @staticmethod
+    def getSearchPath(macros):
         searchPath = [os.path.abspath('.')]
 
         if 'VPATH' not in macros:
@@ -260,7 +307,7 @@ class MakeUtil:
 
     # Glob [text], but search [VPATH] for additional matches.
     def glob(self, text, macros):
-        if not 'VPATH' in macros:
+        if 'VPATH' not in macros:
             return globber.glob(text, '.')
 
         searchPath = self.getSearchPath(macros)
@@ -321,11 +368,11 @@ class MakeUtil:
 
                     sepIndex = targetTest.index("%")
                     beforeContent = targetTest[:sepIndex]
-                    afterContent = targetTest[sepIndex + 1 :]
+                    afterContent = targetTest[sepIndex + 1:]
 
                     if target.startswith(beforeContent) and target.endswith(afterContent):
                         newKey = target
-                        newReplacement = newKey[sepIndex : len(newKey) - len(afterContent)]
+                        newReplacement = newKey[sepIndex:len(newKey) - len(afterContent)]
                         deps = " ".join(deps)
                         deps = escaper.escapeSafeSplit(deps, "%", "\\")
                         deps = newReplacement.join(deps)
@@ -333,8 +380,8 @@ class MakeUtil:
 
                         potentialNewRules.append((deps, rules))
             elif key.startswith(".") and "." in key[1:]:
-                shortKey = key[1:] # Remove the first '.'
-                parts = shortKey.split('.') # NOT a regex.
+                shortKey = key[1:]  # Remove the first '.'
+                parts = shortKey.split('.')  # NOT a regex.
                 requires = '.' + parts[0].strip()
                 creates = '.' + parts[1].strip()
 
@@ -355,7 +402,7 @@ class MakeUtil:
 
                 # Does it fit the current target?
                 if target.endswith(creates):
-                    deps,rules = targets[key]
+                    deps, rules = targets[key]
 
                     newDeps = [dep for dep in deps if dep != '']
                     withoutExtension = target[: - len(creates)]
@@ -369,7 +416,7 @@ class MakeUtil:
                 potentialNewRules.append((rules, deps))
 
         fewestUngeneratableDeps = None
-        for deps,rules in potentialNewRules:
+        for deps, rules in potentialNewRules:
             unsatisfiableCount = 0
 
             # Expand wildcard expressions.
@@ -395,7 +442,8 @@ class MakeUtil:
     # Return True iff [target] is not a "phony" target
     # (as declared by .PHONY). [targets] is the list of all
     # targets.
-    def isPhony(self, target, targets):
+    @staticmethod
+    def isPhony(target, targets):
         if ".PHONY" not in targets:
             return False
 
@@ -422,7 +470,6 @@ class MakeUtil:
 
         targetPath = self.findFile(target, macros)
         selfExists = targetPath is not None
-        selfMTime = 0
 
         if target not in targets:
             if selfExists:
@@ -479,7 +526,7 @@ class MakeUtil:
         targetPath = self.findFile(target, macros)
 
         deps, commands = targets[target]
-        deps = self.globArgs(runner.removeEmpty(deps), macros, False) # Glob the set of dependencies.
+        deps = self.globArgs(runner.removeEmpty(deps), macros, False)  # Glob the set of dependencies.
 
         depPaths = []
 
@@ -549,7 +596,7 @@ class MakeUtil:
 
                 if self.justPrint:
                     print(command)
-                elif not "_BUILTIN_SHELL" in macros:
+                elif "_BUILTIN_SHELL" not in macros:
                     status = subprocess.run(command, shell=True, check=True).returncode
                 else:
                     defaultFlags = []
@@ -557,12 +604,12 @@ class MakeUtil:
                     if "_SYSTEM_SHELL_PIPES" in macros:
                         defaultFlags.append(runner.USE_SYSTEM_PIPE)
 
-                    status,_ = shellUtility.evalScript(command, self.macroUtil, macros, defaultFlags = defaultFlags)
+                    status, _ = shellUtility.evalScript(command, self.macroUtil, macros, defaultFlags=defaultFlags)
 
                 if status != 0 and haltOnFail:
                     self.errorUtil.reportError("Command %s exited with non-zero exit status, %s." % (command, str(status)))
             except Exception as e:
-                if haltOnFail: # e.g. -rm foo should be silent even if it cannot remove foo.
+                if haltOnFail:  # e.g. -rm foo should be silent even if it cannot remove foo.
                     self.errorUtil.reportError("Unable to run command:\n    ``%s``. \n\n  Message:\n%s" % (command, str(e)))
             finally:
                 # We should not switch directories, regardless of the command's result.
@@ -584,14 +631,14 @@ class MakeUtil:
                 inRecipe = True
             elif inRecipe:
                 inRecipe = False
-            elif INCLUDE_DIRECTIVE_EXP.search(line) != None:
+            elif INCLUDE_DIRECTIVE_EXP.search(line) is not None:
                 line = self.macroUtil.expandMacroUsages(line, macros)
 
                 parts = runner.shSplit(line)
                 command = parts[0].strip()
 
-                parts = self.globArgs(parts, macros) # Glob all, except the first...
-                parts = parts[1:] # Remove leading include...
+                parts = self.globArgs(parts, macros)  # Glob all, except the first...
+                parts = parts[1:]  # Remove leading include...
                 ignoreError = False
 
                 # Safe including?
@@ -604,7 +651,7 @@ class MakeUtil:
                     if not os.path.exists(fileName):
                         foundName = self.findFile(fileName, macros)
 
-                        if foundName != None:
+                        if foundName is not None:
                             fileName = foundName
 
                     if not os.path.exists(fileName):
@@ -612,19 +659,19 @@ class MakeUtil:
                             continue
 
                         self.errorUtil.reportError("File %s does not exist. Context: %s" % (fileName, line))
-                        return (contents, macros)
+                        return contents, macros
 
                     if not os.path.isfile(fileName):
                         if ignoreError:
                             continue
 
                         self.errorUtil.reportError("%s is not a file! Context: %s" % (fileName, line))
-                        return (contents, macros)
+                        return contents, macros
 
                     try:
                         with open(fileName, 'r') as file:
                             contents = file.read().split('\n')
-                            contents.reverse() # We're reading in reverse, so write in reverse.
+                            contents.reverse()  # We're reading in reverse, so write in reverse.
 
                             newLines.extend(contents)
                         continue
@@ -633,14 +680,14 @@ class MakeUtil:
                             continue
 
                         self.errorUtil.reportError("Unable to open %s: %s. Context: %s" % (fileName, str(ex), line))
-                        return (contents, macros)
+                        return contents, macros
             newLines.append(line)
 
         newLines.reverse()
 
         return self.macroUtil.expandAndDefineMacros("\n".join(newLines), macros)
 
-    ## Macro commands.
+    # Macro commands.
 
     # Example: $(subst foo,bar,foobar baz) -> barbar baz
     # See https://www.gnu.org/software/make/manual/html_node/Syntax-of-Functions.html#Syntax-of-Functions
@@ -657,11 +704,11 @@ class MakeUtil:
 
         replaceText = self.macroUtil.expandMacroUsages(args[0], macros)
         replaceWith = self.macroUtil.expandMacroUsages(args[1], macros)
-        text        = self.macroUtil.expandMacroUsages(args[2], macros)
+        text = self.macroUtil.expandMacroUsages(args[2], macros)
 
         if not patternBased:
             return re.sub(re.escape(replaceText), replaceWith, text)
-        else: # Using $(patsubst pattern,replacement,text)
+        else:  # Using $(patsubst pattern,replacement,text)
             return self.patsubst(replaceText, replaceWith, text)
 
     # Example: $(word 3, get the third word) -> third
@@ -753,6 +800,23 @@ class MakeUtil:
                 mismatch.append(word)
         return " ".join(mismatch if exclude else match)
 
+    def makeCmdNotImplementedYet(self, argstring, macros, cmd):
+        raise NotImplementedError(f"$({cmd} ...) not yet implemented")
+
+    def makeCmdAddFix(self, argstring, macros, cmd):
+        args = argstring.split(',', 1)
+        if cmd == "addsuffix":
+            suffix = args[0]
+            prefix = ""
+        else:
+            suffix = ""
+            prefix = args[0]
+        result = []
+        for entry in args[1].split():
+            result.append(f"{prefix}{entry}{suffix}")
+
+        return " ".join(result)
+
     def makeCmdPrint(self, argstring, macros, cmd):
         out = sys.stdout
         prefix = ""
@@ -775,7 +839,8 @@ class MakeUtil:
 
     # Replace all patterns defined by replaceText with replaceWith
     # in text.
-    def patsubst(self, replaceText, replaceWith, text):
+    @staticmethod
+    def patsubst(replaceText, replaceWith, text):
         words = SPACE_CHARS.split(text.strip())
         result = []
 
@@ -802,9 +867,9 @@ class MakeUtil:
         replaceWith[1] = '%'.join(replaceWith[1:])
 
         for word in words:
-            if replaceExact == False and (replaceAll or  word.startswith(pattern[0]) and word.endswith(pattern[1])):
+            if not replaceExact and (replaceAll or word.startswith(pattern[0]) and word.endswith(pattern[1])):
                 if not staticReplace:
-                    result.append(replaceWith[0] + word[len(pattern[0]) : -len(pattern[1])] + replaceWith[1])
+                    result.append(replaceWith[0] + word[len(pattern[0]):-len(pattern[1])] + replaceWith[1])
                 else:
                     result.append(replaceWith[0])
             elif replaceExact == word.strip():
@@ -820,8 +885,10 @@ class MakeUtil:
     # dependencies of target by the contents
     # of the makefile given in contents.
     def runMakefile(self, contents, target='',
-                    defaultMacros={"MAKE": "almake"},
+                    defaultMacros=None,
                     overrideMacros=None, file="Makefile"):
+        if defaultMacros is None:
+            defaultMacros = {"MAKE": "almake"}
         self.currentFile = file
         contents, macros = self.macroUtil.expandAndDefineMacros(
             contents, defaultMacros, self)
@@ -841,4 +908,4 @@ class MakeUtil:
         if not satisfied and not self.silent:
             print("Nothing to be done for target ``%s``." % target)
 
-        return (satisfied, macros)
+        return satisfied, macros
