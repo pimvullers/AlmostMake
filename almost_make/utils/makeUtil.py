@@ -20,6 +20,7 @@ import os
 import subprocess
 import threading
 import shlex
+import glob
 # from concurrent.futures import ThreadPoolExecutor # We are **not** using this because adding an
 #                                                   # executor to the queue when in an executed thread can cause deadlock! See
 #                                                   # https://docs.python.org/3/library/concurrent.futures.html#threadpoolexecutor
@@ -46,6 +47,7 @@ MAGIC_TARGETS = {
 class MakeUtil:
     currentFile = 'Makefile'
     currentLine = 0
+    defaultMacros = {}
     recipeStartChar = '\t'
     silent = False
     macroCommands = {}
@@ -100,9 +102,7 @@ class MakeUtil:
         self.macroCommands["addprefix"] = lambda argstring, macros: \
             self.makeCmdAddFix(argstring, macros, cmd="addprefix")
         self.macroCommands["join"] = self.makeCmdJoin
-        self.macroCommands["wildcard"] = lambda argstring, macros: \
-            " ".join([shlex.quote(part) for part in self.glob(
-                self.macroUtil.expandMacroUsages(argstring, macros), macros)])
+        self.macroCommands["wildcard"] = self.makeCmdWildcard
         self.macroCommands["realpath"] = lambda argstring, macros: \
             " ".join([os.path.realpath(arg) for arg in SPACE_CHARS.split(
                 self.macroUtil.expandMacroUsages(argstring, macros))])
@@ -132,14 +132,12 @@ class MakeUtil:
         self.macroCommands["foreach"] = self.makeCmdForeach
         self.macroCommands["file"] = lambda argstring, macros: \
             self.makeCmdNotImplementedYet(argstring, macros, cmd="file")
-        self.macroCommands["call"] = lambda argstring, macros: \
-            self.makeCmdNotImplementedYet(argstring, macros, cmd="call")
+        self.macroCommands["call"] = self.makeCmdCall
         self.macroCommands["value"] = lambda argstring, macros: \
             self.makeCmdNotImplementedYet(argstring, macros, cmd="value")
         self.macroCommands["eval"] = lambda argstring, macros: \
             self.makeCmdNotImplementedYet(argstring, macros, cmd="eval")
-        self.macroCommands["origin"] = lambda argstring, macros: \
-            self.makeCmdNotImplementedYet(argstring, macros, cmd="origin")
+        self.macroCommands["origin"] = self.makeCmdOrigin
         self.macroCommands["flavor"] = lambda argstring, macros: \
             self.makeCmdNotImplementedYet(argstring, macros, cmd="flavor")
         # To-do: Use the built-in shell if specified...
@@ -697,7 +695,7 @@ class MakeUtil:
     # See https://www.gnu.org/software/make/manual/html_node/Syntax-of-Functions.html#Syntax-of-Functions
     #     and https://www.gnu.org/software/make/manual/html_node/Text-Functions.html
     def makeCmdSubst(self, argstring, macros, patternBased=False):
-        args = argstring.split(',')
+        args = self.macroUtil.argumentSplit(argstring)
 
         if len(args) < 3:
             self.errorUtil.reportError("Too few arguments given to subst function. Arguments: %s" % ','.join(args))
@@ -730,7 +728,7 @@ class MakeUtil:
         argText = argstring.strip()
 
         if selectIndex is None:
-            args = argstring.split(',')
+            args = self.macroUtil.argumentSplit(argstring)
 
             if len(args) <= 1:
                 self.errorUtil.reportError(
@@ -762,7 +760,7 @@ class MakeUtil:
             return ""
 
     def makeCmdWordList(self, argstring, macros):
-        args = argstring.split(',')
+        args = self.macroUtil.argumentSplit(argstring)
 
         if len(args) <= 2:
             self.errorUtil.reportError(
@@ -800,11 +798,12 @@ class MakeUtil:
     # See https://www.gnu.org/software/make/manual/html_node/Syntax-of-Functions.html#Syntax-of-Functions
     #     and https://www.gnu.org/software/make/manual/html_node/Conditional-Functions.html
     def makeCmdIf(self, argstring, macros):
-        # TODO: split first, then expand
-        args = argstring.split(',')
+        args = self.macroUtil.argumentSplit(argstring)
 
         if not (len(args) == 2 or len(args) == 3):
-            self.errorUtil.reportError("Incorrect number of arguments given to if function. Arguments: %s" % ','.join(args))
+            self.errorUtil.reportError(
+                "Incorrect number of arguments given to if function. "
+                f"Arguments: {argstring}")
 
         cond = self.macroUtil.expandMacroUsages(args[0], macros).strip()
         if cond != "":
@@ -813,10 +812,10 @@ class MakeUtil:
             return "" if len(args) == 2 else args[2]
 
     def makeCmdLogical(self, argstring, macros, returnOnEmpty=False):
-        conditions = argstring.split(',')
+        args = self.macroUtil.argumentSplit(argstring)
 
         result = ""
-        for condition in conditions:
+        for condition in args:
             expanded_condition = self.macroUtil.expandMacroUsages(
                 condition, macros)
             if expanded_condition == "":
@@ -840,13 +839,17 @@ class MakeUtil:
     # See https://www.gnu.org/software/make/manual/html_node/Syntax-of-Functions.html#Syntax-of-Functions
     #     and https://www.gnu.org/software/make/manual/html_node/Text-Functions.html
     def makeCmdFilter(self, argstring, macros, exclude=False, find=False):
-        args = argstring.split(',')
+        args = self.macroUtil.argumentSplit(argstring)
 
         if not len(args) == 2:
-            self.errorUtil.reportError("Incorrect number of arguments given to filter function. Arguments: %s" % ','.join(args))
+            self.errorUtil.reportError(
+                "Incorrect number of arguments given to filter function. "
+                f"Arguments: {argstring}")
 
         if '%' in args[0]:
-            self.errorUtil.reportError("Patterns are not yet supported for filter function. Filters: %s" % args[0])
+            self.errorUtil.reportError(
+                "Patterns are not yet supported for filter function. "
+                f"Filters: {args[0]}")
 
         patterns = SPACE_CHARS.split(
             self.macroUtil.expandMacroUsages(args[0], macros))
@@ -870,7 +873,7 @@ class MakeUtil:
         raise NotImplementedError(f"$({cmd} ...) not yet implemented")
 
     def makeCmdJoin(self, argstring, macros):
-        args = argstring.split(',', 1)
+        args = self.macroUtil.argumentSplit(argstring)
         a = SPACE_CHARS.split(args[0])
         b = SPACE_CHARS.split(args[1])
 
@@ -886,13 +889,14 @@ class MakeUtil:
         return " ".join(result)
 
     def makeCmdAddFix(self, argstring, macros, cmd):
-        args = argstring.split(',', 1)
+        args = self.macroUtil.argumentSplit(argstring)
+        fix = self.macroUtil.expandMacroUsages(args[0], macros)
         if cmd == "addsuffix":
-            suffix = args[0]
+            suffix = fix
             prefix = ""
         else:
             suffix = ""
-            prefix = args[0]
+            prefix = fix
         result = []
         for entry in SPACE_CHARS.split(
                 self.macroUtil.expandMacroUsages(args[1], macros)):
@@ -922,7 +926,7 @@ class MakeUtil:
 
     # https://www.gnu.org/software/make/manual/html_node/Foreach-Function.html
     def makeCmdForeach(self, argstring, macros):
-        args = argstring.split(',')
+        args = self.macroUtil.argumentSplit(argstring)
 
         if not len(args) == 3:
             self.errorUtil.reportError(
@@ -941,6 +945,45 @@ class MakeUtil:
             result.append(self.macroUtil.expandMacroUsages(text, each_macros))
 
         return " ".join(result)
+
+    # https://www.gnu.org/software/make/manual/html_node/Call-Function.html
+    def makeCmdCall(self, argstring, macros):
+        args = self.macroUtil.argumentSplit(argstring)
+
+        varname = self.macroUtil.expandMacroUsages(args[0], macros).strip()
+        call_macros = macros.copy()
+        for index, arg in enumerate(args):
+            call_macros[str(index)] = arg
+
+        if varname in self.macroUtil.macroCommands:
+            return self.macroUtil.macroCommands[varname](",".join(args[1:]),
+                                                         call_macros)
+        else:
+            return self.macroUtil.expandMacroUsages(
+                macros[varname], call_macros)
+
+    # https://www.gnu.org/software/make/manual/html_node/Wildcard-Function.html
+    def makeCmdWildcard(self, argstring, macros):
+        patterns = SPACE_CHARS.split(
+            self.macroUtil.expandMacroUsages(argstring, macros))
+
+        result = []
+        for pattern in patterns:
+            result.extend(glob.glob(pattern))
+        return " ".join([shlex.quote(part) for part in result])
+
+    # https://www.gnu.org/software/make/manual/html_node/Origin-Function.html
+    def makeCmdOrigin(self, argstring, macros):
+        text = self.macroUtil.expandMacroUsages(argstring, macros)
+
+        if text not in macros:
+            return "undefined"
+        elif text in self.defaultMacros:
+            return "default"
+        elif text in self.macroUtil.getDefaultMacros():
+            return "environment"
+        else:
+            return "file"
 
     # Replace all patterns defined by replaceText with replaceWith
     # in text.
@@ -994,6 +1037,7 @@ class MakeUtil:
                     overrideMacros=None, file="Makefile"):
         if defaultMacros is None:
             defaultMacros = {"MAKE": "almake"}
+        self.defaultMacros = defaultMacros.copy()
         self.currentFile = file
         contents, macros = self.macroUtil.expandAndDefineMacros(
             contents, defaultMacros, self)
