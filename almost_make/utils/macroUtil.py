@@ -12,7 +12,7 @@ import almost_make.utils.shellUtil.runner as runner
 import almost_make.utils.errorUtil as errorUtil
 
 # Regular expressions:
-MACRO_NAME_CHAR_EXP = r"[a-zA-Z0-9_]"
+MACRO_NAME_CHAR_EXP = r"[a-zA-Z0-9_@^<-]"
 MACRO_NAME_CHAR_RE = re.compile(MACRO_NAME_CHAR_EXP)
 MACRO_SET_EXP = r"\s*([:+?]?)=\s*"
 MACRO_SET_RE = re.compile(MACRO_SET_EXP)
@@ -77,8 +77,10 @@ class MacroUtil:
 
     # Get if [text] defines a macro.
     def isMacroDef(self, text):
-        if IS_MACRO_DEF_RE.match(text) is None:
+        if MACRO_SET_RE.search(text) is None:
             return False
+        # if IS_MACRO_DEF_RE.match(text) is None:
+        #     return False
         for condition in self.definitionConditions:
             if not condition(text):
                 return False
@@ -356,19 +358,27 @@ From %s, parsed arguments: %s""" % (
                 buff = buff.lstrip()
                 words = SPACE_CHARS.split(buff)
 
-                if buff in macros:
-                    buff = self.expandMacroUsages(macros[buff], macros)
-                elif words[0] in self.macroCommands:
-                    match = re.search("\s", buff)
-                    argText = buff[match.end():]
-                    buff = self.macroCommands[words[0]](argText, macros)
-                elif self.expandUndefinedMacrosTo is None:
-                    # If no default macro value, display an error message.
-                    self.errorLogger.reportError(
-                        f"Undefined macro {buff}. Context: {line}.")
-                else:
-                    # If we continue, expand to nothing.
-                    buff = self.expandUndefinedMacrosTo
+                while True:
+                    if buff in macros:
+                        buff = self.expandMacroUsages(macros[buff], macros)
+                    elif words[0] in self.macroCommands:
+                        match = re.search(r"\s", buff)
+                        argText = buff[match.end():]
+                        buff = self.macroCommands[words[0]](argText, macros)
+                    else:
+                        # Check if the macro name itself can be expanded
+                        exp_buff = self.expandMacroUsages(buff, macros)
+                        if exp_buff != buff:
+                            buff = exp_buff
+                            continue
+                        elif self.expandUndefinedMacrosTo is None:
+                            # If no default macro value, display an error.
+                            self.errorLogger.reportError(
+                                f"Undefined macro {buff}. Context: {line}.")
+                        else:
+                            # If we continue, expand to nothing.
+                            buff = self.expandUndefinedMacrosTo
+                    break
 
                 expanded += buff
                 expanded += afterBuff
@@ -392,6 +402,7 @@ From %s, parsed arguments: %s""" % (
         result = ''
         conditionalData = None
         definitionName = None
+        definitionType = ''
         definitionData = []
 
         for lineNumber, line in enumerate(lines):
@@ -479,14 +490,41 @@ From %s, parsed arguments: %s""" % (
             if definitionName is not None:
                 if line.startswith("endef"):
                     name = definitionName.strip()
-                    macros[name] = "\n".join(definitionData)
+                    definedTo = "\n".join(definitionData)
+                    doNotDefine = False
+                    concatWith = ''
+                    deferExpand = False
+
+                    # ?=, so only define if undefined.
+                    if definitionType == '?' and name in macros:
+                        doNotDefine = True
+                    elif definitionType == '+' and name in macros:
+                        concatWith = macros[name]
+                    elif definitionType == '':
+                        deferExpand = True
+
+                    if not doNotDefine:
+                        if concatWith != "" and definedTo != "":
+                            concatWith += " "
+                        if not deferExpand:
+                            macros[name] = concatWith + self.expandMacroUsages(
+                                definedTo, macros)
+                        else:
+                            macros[name] = concatWith + definedTo
+
                     definitionName = None
                 else:
                     definitionData.append(line)
                 continue
 
             if line.startswith("define"):
-                definitionName = line[len("define "):]
+                setExpr = MACRO_SET_RE.search(line)
+                if setExpr is None:
+                    definitionType = ''
+                    definitionName = line[len("define "):]
+                else:
+                    definitionType = setExpr.group(1)
+                    definitionName = line[len("define "):setExpr.start()]
                 definitionData = []
                 continue
 
@@ -497,8 +535,8 @@ From %s, parsed arguments: %s""" % (
                     line = line[len("export "):]
 
                 parts = MACRO_SET_RE.split(line)
-                name = parts[0]
-                definedTo = line[len(name):]
+                name = self.expandMacroUsages(parts[0], macros)
+                definedTo = line[len(parts[0]):]
 
                 # Remove the first set character.
                 definedTo = MACRO_SET_RE.sub("", definedTo, count=1)
