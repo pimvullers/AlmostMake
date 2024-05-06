@@ -315,10 +315,10 @@ From %s, parsed arguments: %s""" % (
                 words = SPACE_CHARS.split(buff)
 
                 if buff in macros:
-                    buff = macros[buff]
+                    buff = self.expandMacroUsages(macros[buff], macros)
                 elif words[0] in self.macroCommands:
-                    argText = self.expandMacroUsages(" ".join(words[1:]),
-                                                     macros)
+                    match = re.search("\s", buff)
+                    argText = buff[match.end():]
                     buff = self.macroCommands[words[0]](argText, macros)
                 elif self.expandUndefinedMacrosTo is None:
                     # If no default macro value, display an error message.

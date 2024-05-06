@@ -129,8 +129,7 @@ class MakeUtil:
         # Other functions
         self.macroCommands["let"] = lambda argstring, macros: \
             self.makeCmdNotImplementedYet(argstring, macros, cmd="let")
-        self.macroCommands["foreach"] = lambda argstring, macros: \
-            self.makeCmdNotImplementedYet(argstring, macros, cmd="foreach")
+        self.macroCommands["foreach"] = self.makeCmdForeach
         self.macroCommands["file"] = lambda argstring, macros: \
             self.makeCmdNotImplementedYet(argstring, macros, cmd="file")
         self.macroCommands["call"] = lambda argstring, macros: \
@@ -802,30 +801,31 @@ class MakeUtil:
     #     and https://www.gnu.org/software/make/manual/html_node/Conditional-Functions.html
     def makeCmdIf(self, argstring, macros):
         # TODO: split first, then expand
-        args = self.macroUtil.expandMacroUsages(argstring, macros).split(',')
+        args = argstring.split(',')
 
         if not (len(args) == 2 or len(args) == 3):
             self.errorUtil.reportError("Incorrect number of arguments given to if function. Arguments: %s" % ','.join(args))
 
-        cond = args[0].strip()
+        cond = self.macroUtil.expandMacroUsages(args[0], macros).strip()
         if cond != "":
             return args[1]
         else:
             return "" if len(args) == 2 else args[2]
 
     def makeCmdLogical(self, argstring, macros, returnOnEmpty=False):
-        # TODO: split first, then expand
-        conditions = self.macroUtil.expandMacroUsages(argstring, macros).split(',')
+        conditions = argstring.split(',')
 
         result = ""
         for condition in conditions:
-            if condition == "":
+            expanded_condition = self.macroUtil.expandMacroUsages(
+                condition, macros)
+            if expanded_condition == "":
                 if returnOnEmpty:
                     return ""
             else:
                 if not returnOnEmpty:
-                    return condition
-            result = condition
+                    return expanded_condition
+            result = expanded_condition
 
         return result
 
@@ -848,8 +848,10 @@ class MakeUtil:
         if '%' in args[0]:
             self.errorUtil.reportError("Patterns are not yet supported for filter function. Filters: %s" % args[0])
 
-        patterns = SPACE_CHARS.split(args[0])
-        text = SPACE_CHARS.split(args[1])
+        patterns = SPACE_CHARS.split(
+            self.macroUtil.expandMacroUsages(args[0], macros))
+        text = SPACE_CHARS.split(
+            self.macroUtil.expandMacroUsages(args[1], macros))
 
         match = []
         mismatch = []
@@ -892,7 +894,8 @@ class MakeUtil:
             suffix = ""
             prefix = args[0]
         result = []
-        for entry in SPACE_CHARS.split(args[1]):
+        for entry in SPACE_CHARS.split(
+                self.macroUtil.expandMacroUsages(args[1], macros)):
             result.append(f"{prefix}{entry}{suffix}")
 
         return " ".join(result)
@@ -916,6 +919,28 @@ class MakeUtil:
             exit(2)
         else:
             return ""
+
+    # https://www.gnu.org/software/make/manual/html_node/Foreach-Function.html
+    def makeCmdForeach(self, argstring, macros):
+        args = argstring.split(',')
+
+        if not len(args) == 3:
+            self.errorUtil.reportError(
+                "Incorrect number of arguments given to foreach function. "
+                f"Arguments: {argstring}")
+
+        varname = self.macroUtil.expandMacroUsages(args[0], macros)
+        entries = SPACE_CHARS.split(
+            self.macroUtil.expandMacroUsages(args[1], macros))
+        text = args[2]
+
+        result = []
+        for entry in entries:
+            each_macros = macros.copy()
+            each_macros[varname] = entry
+            result.append(self.macroUtil.expandMacroUsages(text, each_macros))
+
+        return " ".join(result)
 
     # Replace all patterns defined by replaceText with replaceWith
     # in text.
