@@ -317,7 +317,7 @@ def evalCommand(orderedCommand, customCommands={}, flags=[], stdin=None, stdout=
 
             os.close(fdIn)
 
-            if isinstance(left, int):
+            if not isinstance(left, int):
                 left.communicate()
                 left = left.returncode
 

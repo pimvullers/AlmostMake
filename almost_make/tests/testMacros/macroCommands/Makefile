@@ -18,19 +18,19 @@ all: $(wildcard *.tx*)
 	echo $(firstword 1,firstword) | grep -Fx "1,firstword"
 	echo $(lastword $(strip thing       )) | grep -Fx "thing"
 
-	echo $(dir foo/bar/baz)  | grep -Fx "foo/bar"
-	echo $(dir /a/b/c/)  | grep -Fx "/a/b/c"
+	echo $(dir foo/bar/baz)  | grep -Fx "foo/bar/"
+	echo $(dir /a/b/c/)  | grep -Fx "/a/b/c/"
 	echo $(notdir /a/b/c/d.txt)  | grep -Fx "d.txt"
 	echo $(notdir d.txt)  | grep -Fx "d.txt"
 	echo $(abspath d.txt)  | grep -Fx "$${PWD}/d.txt"
-	echo $(realpath d.txt)  | grep -Fx "$${PWD}/d.txt"
+	echo $(realpath d.txt)  | grep -Fx ""
 
 	echo $(subst a,b,a) | grep -Fx "b"
 	echo $(subst foo,bar,bar) | grep -Fx "bar"
 	echo $(subst nope,noChanges,here) | grep -Fx "here"
 	echo $(subst and,it,happened to happen, that day. And so it did. And, and, and.) \
 		| grep -Fx "happened to happen, that day. And so it did. And, it, it."
-	
+
 	echo $(patsubst a,b,c d ) | grep -Fx "c d"
 	echo $(patsubst a,,c d ) | grep -Fx "c d"
 	echo $(patsubst c,aa,c d ) | grep -Fx "aa d"

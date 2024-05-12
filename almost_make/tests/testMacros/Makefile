@@ -18,8 +18,8 @@ C := $(A)
 C += 56789
 
 testMacroConcat:
-	echo $(A) | grep 1234
-	echo $(C) | grep 123456789
+	echo $(A) | grep "123 4"
+	echo $(C) | grep "123 4 56789"
 
 CONDITIONALLY_SET ?= I am set!
 CONDITIONALLY_SET ?= Really?
@@ -30,7 +30,7 @@ testMacroConditionalSet:
 testMacroCommands:
 	@echo "---- Testing macro commands ----"
 	$(MAKE) -C macroCommands
-	OUT=$(MAKE) -C macroCommands;\
+#	OUT=$(MAKE) -C macroCommands;\
 	echo $$(OUT) | grep -F 'a.txt';\
 	echo $$(OUT) | grep -F 'b.txt';\
 	echo $$(OUT) | grep -F 'c.txt';

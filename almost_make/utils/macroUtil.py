@@ -271,45 +271,31 @@ From %s, parsed arguments: %s""" % (
         return line[:trimToIndex]
 
     def argumentSplit(self, argstring):
-        buff = ''
         argBuff = ''
-        parenLevel = 0
-        inMacro = False
+        last_c = ''
+        macroStack = []
 
         args = []
         for c in argstring:
-            if c == ',' and not inMacro:
+            if c == ',' and not macroStack:
                 args.append(argBuff)
                 argBuff = ''
             else:
                 argBuff += c
-                if c == '$' and not inMacro and parenLevel == 0:
-                    buff += c
-                    inMacro = True
-                elif c == '$' and parenLevel == 0 and inMacro and buff == '':
-                    inMacro = False
-                elif (c == '(' or c == '{') and inMacro:
-                    parenLevel += 1
+                if (c == '(' or c == '{') and last_c == '$':
+                    macroStack.append(c)
+                elif c == ')' and macroStack:
+                    if macroStack[-1] == '(':
+                        macroStack.pop()
+                elif c == '}' and macroStack:
+                    if macroStack[-1] == '{':
+                        macroStack.pop()
+            last_c = c
+        args.append(argBuff)
 
-                    if parenLevel > 1:
-                        buff += c
-                elif (c == ')' or c == '}') and inMacro:
-                    parenLevel -= 1
-
-                    if parenLevel == 0:
-                        inMacro = False
-                    else:
-                        buff += c
-                elif inMacro and parenLevel == 0 and \
-                        not MACRO_NAME_CHAR_RE.match(c):
-                    inMacro = False
-                else:
-                    buff += c
-
-        if parenLevel > 0:
+        if macroStack:
             self.errorLogger.reportError(f"Unclosed parenthesis: {argstring}")
 
-        args.append(argBuff)
         return args
 
     # Expand usages of [macros] in [line]. Make no definitions and expand

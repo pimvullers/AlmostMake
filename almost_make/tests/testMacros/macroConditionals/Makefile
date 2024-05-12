@@ -53,7 +53,7 @@ testNEqlWithSpaces:
 ifeq "$(PASS)" "$(PASS)"
    ifeq "$(PASS)" "$(FAIL)"
    else
- ifneq 1 2
+ ifneq (1, 2)
 testNested:
     endif
    endif
@@ -62,9 +62,10 @@ endif
 ifdef MAKE
 testStacked:
 endif
-	export A=1
+	echo 1 > .test_file_A
 ifdef foo
-	echo $$A | grep 1
+	cat .test_file_A | grep 1
+	rm .test_file_A
 endif
 	$(PASS)
 
@@ -92,15 +93,16 @@ else ifdef bar
 	$(FAIL) # else ifdef bar
 else ifeq '1' '1'
 	echo "Testchain:"; $(PASS) # else ifeq '1' '1'
-  ifeq 2 2
- ifneq 2 2
-  else ifneq 3 3
+  ifeq (2, 2)
+ ifneq (2, 2)
+  else ifneq (3, 3)
   else
-		export AB=66
+		echo 66 > .test_file_AB
  endif
   endif
 else
 	$(FAIL) # else
 endif
 	echo "END OF CHAIN............"
-	echo $$(AB) | grep 66
+	cat .test_file_AB | grep 66
+	rm .test_file_AB

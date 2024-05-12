@@ -103,9 +103,7 @@ class MakeUtil:
             self.makeCmdAddFix(argstring, macros, cmd="addprefix")
         self.macroCommands["join"] = self.makeCmdJoin
         self.macroCommands["wildcard"] = self.makeCmdWildcard
-        self.macroCommands["realpath"] = lambda argstring, macros: \
-            " ".join([os.path.realpath(arg) for arg in SPACE_CHARS.split(
-                self.macroUtil.expandMacroUsages(argstring, macros))])
+        self.macroCommands["realpath"] = self.makeCmdRealpath
         self.macroCommands["abspath"] = lambda argstring, macros: \
             " ".join([os.path.abspath(arg) for arg in SPACE_CHARS.split(
                 self.macroUtil.expandMacroUsages(argstring, macros))])
@@ -971,6 +969,20 @@ class MakeUtil:
         for pattern in patterns:
             result.extend(glob.glob(pattern))
         return " ".join([shlex.quote(part) for part in result])
+
+    # https://www.gnu.org/software/make/manual/html_node/File-Name-Functions.html
+    def makeCmdRealpath(self, argstring, macros):
+        paths = SPACE_CHARS.split(
+            self.macroUtil.expandMacroUsages(argstring, macros))
+
+        result = []
+        for p in paths:
+            try:
+                result.append(os.path.realpath(p, strict=True))
+            except OSError:
+                pass
+
+        return " ".join(result)
 
     # https://www.gnu.org/software/make/manual/html_node/Origin-Function.html
     def makeCmdOrigin(self, argstring, macros):
